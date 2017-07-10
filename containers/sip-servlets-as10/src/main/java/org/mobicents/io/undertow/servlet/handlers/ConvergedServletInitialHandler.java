@@ -20,33 +20,16 @@ package org.mobicents.io.undertow.servlet.handlers;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
 import java.util.concurrent.Executor;
-
 import javax.servlet.DispatcherType;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.mobicents.io.undertow.servlet.spec.ConvergedHttpServletRequestFacade;
-import org.mobicents.io.undertow.servlet.spec.ConvergedHttpServletResponseFacade;
-import org.mobicents.servlet.sip.startup.ConvergedServletContextImpl;
-import org.xnio.BufferAllocator;
-import org.xnio.ByteBufferSlicePool;
-import org.xnio.ChannelListener;
-import org.xnio.Option;
-import org.xnio.OptionMap;
-import org.xnio.Pool;
-import org.xnio.StreamConnection;
-import org.xnio.XnioIoThread;
-import org.xnio.XnioWorker;
-import org.xnio.channels.ConnectedChannel;
-import org.xnio.conduits.ConduitStreamSinkChannel;
-import org.xnio.conduits.ConduitStreamSourceChannel;
-import org.xnio.conduits.StreamSinkConduit;
 
 import io.undertow.UndertowMessages;
 import io.undertow.connector.ByteBufferPool;
@@ -57,7 +40,7 @@ import io.undertow.server.HttpUpgradeListener;
 import io.undertow.server.SSLSessionInfo;
 import io.undertow.server.ServerConnection;
 import io.undertow.server.XnioBufferPoolAdaptor;
-import io.undertow.servlet.core.CompositeThreadSetupAction;
+import io.undertow.servlet.api.Deployment;
 import io.undertow.servlet.core.ServletBlockingHttpExchange;
 import io.undertow.servlet.handlers.ServletChain;
 import io.undertow.servlet.handlers.ServletInitialHandler;
@@ -71,6 +54,20 @@ import io.undertow.util.HttpString;
 import io.undertow.util.Protocols;
 import io.undertow.util.RedirectBuilder;
 import io.undertow.util.StatusCodes;
+import org.mobicents.io.undertow.servlet.spec.ConvergedHttpServletRequestFacade;
+import org.mobicents.io.undertow.servlet.spec.ConvergedHttpServletResponseFacade;
+import org.mobicents.servlet.sip.startup.ConvergedServletContextImpl;
+import org.xnio.ChannelListener;
+import org.xnio.Option;
+import org.xnio.OptionMap;
+import org.xnio.Pool;
+import org.xnio.StreamConnection;
+import org.xnio.XnioIoThread;
+import org.xnio.XnioWorker;
+import org.xnio.channels.ConnectedChannel;
+import org.xnio.conduits.ConduitStreamSinkChannel;
+import org.xnio.conduits.ConduitStreamSourceChannel;
+import org.xnio.conduits.StreamSinkConduit;
 
 /**
  * This class extends io.undertow.servlet.handlers.ServletInitialHandler to create ConvergedServletRequestContext with
@@ -83,12 +80,27 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
     private static final String HTTP2_UPGRADE_PREFIX = "h2";
 
     private final ConvergedServletContextImpl convergedServletContext;
+    private final Method dispatchRequest;
+    private final Field pathsField;
+    private final Method dispatchRequestWithExchange;
 
-    public ConvergedServletInitialHandler(final ServletPathMatches paths,final HttpHandler next,final CompositeThreadSetupAction setupAction,
-            final ConvergedServletContextImpl servletContext) {
-        super(paths, next, setupAction, servletContext.getDelegatedContext());
+    public ConvergedServletInitialHandler(final ServletPathMatches paths, final HttpHandler next, final Deployment deployment,
+                                          final ConvergedServletContextImpl servletContext) {
+        super(paths, next, deployment, servletContext.getDelegatedContext());
         this.convergedServletContext = servletContext;
+        try {
+            this.dispatchRequest = super.getClass().getDeclaredMethod("dispatchRequest", ServletRequestContext.class, ServletChain.class, DispatcherType.class);
+            this.dispatchRequest.setAccessible(true);
+            this.pathsField = ServletInitialHandler.class.getDeclaredField("paths");
+            this.pathsField.setAccessible(true);
 
+            //dispatchRequest(final HttpServerExchange exchange, final ServletRequestContext servletRequestContext, final ServletChain servletChain, final DispatcherType dispatcherType) throws Exception {
+            this.dispatchRequestWithExchange = super.getClass().getDeclaredMethod("dispatchRequest", HttpServerExchange.class, ServletRequestContext.class, ServletChain.class, DispatcherType.class);
+            this.dispatchRequestWithExchange.setAccessible(true);
+
+        } catch (NoSuchMethodException|NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -96,11 +108,9 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
         ServletPathMatches paths=null;
         try{
             //lets get access of superclass private fields using reflection:
-            Field pathsField = ServletInitialHandler.class.getDeclaredField("paths");
-            pathsField.setAccessible(true);
             paths = (ServletPathMatches)pathsField.get(this);
-            pathsField.setAccessible(false);
-        }catch(NoSuchFieldException | IllegalAccessException e){
+
+        }catch(IllegalAccessException e){
             throw new ServletException(e);
         }
 
@@ -156,13 +166,13 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
                 @Override
                 public void handleRequest(final HttpServerExchange exchange) throws Exception {
                     if(System.getSecurityManager() == null) {
-                        dispatchRequest(exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
+                        dispatchRequestWithExchange.invoke(this, exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
                     } else {
                         //sometimes thread pools inherit some random
                         AccessController.doPrivileged(new PrivilegedExceptionAction<Object>() {
                             @Override
                             public Object run() throws Exception{
-                                dispatchRequest(exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
+                                dispatchRequestWithExchange.invoke(this, exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
                                 return null;
                             }
                         });
@@ -170,7 +180,7 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
                 }
             });
         } else {
-            dispatchRequest(exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
+            dispatchRequestWithExchange.invoke(this, exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
         }
     }
 
@@ -217,7 +227,7 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
         servletRequestContext.setServletPathMatch(info);
 
         try {
-            dispatchRequest(exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
+            dispatchRequest.invoke(this, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
         } catch (Exception e) {
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;
@@ -229,29 +239,7 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
     //FIXME:kakonyii: This method is copied form the base class:
     private boolean isForbiddenPath(String path) {
         return path.equalsIgnoreCase("/meta-inf/")
-            || path.regionMatches(true, 0, "/web-inf/", 0, "/web-inf/".length());
-    }
-
-    //FIXME:kakonyii: This method is copied form the base class:
-    private void dispatchRequest(final HttpServerExchange exchange, final ServletRequestContext servletRequestContext, final ServletChain servletChain, final DispatcherType dispatcherType) throws Exception {
-        HttpHandler next=null;
-        try{
-            //lets get access of superclass private fields using reflection:
-            Field nextField = ServletInitialHandler.class.getDeclaredField("next");
-            nextField.setAccessible(true);
-            next = (HttpHandler)nextField.get(this);
-            nextField.setAccessible(false);
-        }catch(NoSuchFieldException | IllegalAccessException e){
-            throw new ServletException(e);
-        }
-
-        servletRequestContext.setDispatcherType(dispatcherType);
-        servletRequestContext.setCurrentServlet(servletChain);
-        if (dispatcherType == DispatcherType.REQUEST || dispatcherType == DispatcherType.ASYNC) {
-            super.handleFirstRequest(exchange, servletChain, servletRequestContext, servletRequestContext.getServletRequest(), servletRequestContext.getServletResponse());
-        } else {
-            next.handleRequest(exchange);
-        }
+                || path.regionMatches(true, 0, "/web-inf/", 0, "/web-inf/".length());
     }
 
     //FIXME:kakonyii: This class is copied form the base class:
@@ -259,13 +247,14 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
         private final ByteBufferPool bufferPool;
         private SSLSessionInfo sslSessionInfo;
         private XnioBufferPoolAdaptor poolAdaptor;
+
         private MockServerConnection(ByteBufferPool bufferPool) {
             this.bufferPool = bufferPool;
         }
 
         @Override
         public Pool<ByteBuffer> getBufferPool() {
-            if(poolAdaptor == null) {
+            if (poolAdaptor == null) {
                 poolAdaptor = new XnioBufferPoolAdaptor(getByteBufferPool());
             }
             return poolAdaptor;
@@ -428,4 +417,5 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
             return "mock";
         }
     }
+
 }

@@ -21,7 +21,7 @@ package org.mobicents.io.undertow.servlet.core;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.session.Session;
 import io.undertow.server.session.SessionManager;
-import io.undertow.servlet.core.CompositeThreadSetupAction;
+import io.undertow.servlet.api.Deployment;
 import io.undertow.servlet.handlers.ServletInitialHandler;
 import io.undertow.servlet.handlers.ServletPathMatches;
 import io.undertow.servlet.handlers.ServletRequestContext;
@@ -109,14 +109,14 @@ class SecurityActions {
         }
     }
     
-    static ServletInitialHandler createServletInitialHandler(final ServletPathMatches paths, final HttpHandler next, final CompositeThreadSetupAction setupAction, final ServletContext servletContext) {
+    static ServletInitialHandler createServletInitialHandler(final ServletPathMatches paths, final HttpHandler next, final Deployment deployment, final ServletContext servletContext) {
         if (System.getSecurityManager() == null) {
-            return new ConvergedServletInitialHandler(paths, next, setupAction, /*TODO*/(ConvergedServletContextImpl) servletContext);
+            return new ConvergedServletInitialHandler(paths, next, deployment, /*TODO*/(ConvergedServletContextImpl) servletContext);
         } else {
             return AccessController.doPrivileged(new PrivilegedAction<ServletInitialHandler>() {
                 @Override
                 public ServletInitialHandler run() {
-                    return new ConvergedServletInitialHandler(paths, next, setupAction, /*TODO*/(ConvergedServletContextImpl) servletContext);
+                    return new ConvergedServletInitialHandler(paths, next, deployment, /*TODO*/(ConvergedServletContextImpl) servletContext);
                 }
             });
         }

@@ -122,7 +122,9 @@
 			</plugin>
 
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.6.1</version>
 				<configuration>
 					<compilerArguments>
 						<g />
@@ -459,15 +461,18 @@
 				<module>containers/sip-servlets-as10-drop-in/build-restcomm-modules</module>
 			</modules>
 			<properties>				
-				<version.org.jboss.spec.javax.servlet.jboss-servlet-api_3.0_spec>1.0.0.Final</version.org.jboss.spec.javax.servlet.jboss-servlet-api_3.0_spec>
+				<version.org.jboss.spec.javax.servlet.jboss-servlet-api_3.1_spec>1.0.0.Final</version.org.jboss.spec.javax.servlet.jboss-servlet-api_3.1_spec>
 				<log4j.version>1.2.16</log4j.version>
+				<!-- WildFly 10 requires java 8-->
+				<maven.compiler.target>1.8</maven.compiler.target>
+				<maven.compiler.source>1.8</maven.compiler.source>
 			</properties>
 			<dependencies>
 				<!-- j2ee dependencies -->
 				<dependency>
 					<groupId>org.jboss.spec.javax.servlet</groupId>
-					<artifactId>jboss-servlet-api_3.0_spec</artifactId>
-					<version>${version.org.jboss.spec.javax.servlet.jboss-servlet-api_3.0_spec}</version>
+					<artifactId>jboss-servlet-api_3.1_spec</artifactId>
+					<version>${version.org.jboss.spec.javax.servlet.jboss-servlet-api_3.1_spec}</version>
 					<scope>provided</scope>
 				</dependency>
 			</dependencies>

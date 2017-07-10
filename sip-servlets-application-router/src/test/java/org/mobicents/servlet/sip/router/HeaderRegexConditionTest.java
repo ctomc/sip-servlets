@@ -669,6 +669,10 @@ public class HeaderRegexConditionTest extends TestCase {
                                                                            // | Templates.
         }
 
+        @Override
+        public long getContentLengthLong() {
+            return (long)getContentLength();
+        }
     }
 
     public void testConditionMet() {

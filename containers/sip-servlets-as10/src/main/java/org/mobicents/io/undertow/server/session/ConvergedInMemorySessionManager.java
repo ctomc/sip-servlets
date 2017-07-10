@@ -363,7 +363,7 @@ public class ConvergedInMemorySessionManager implements SessionManager, SessionM
         public long getCreationTime() {
             final ConvergedInMemorySession sess = sessionManager.sessions.get(sessionId);
             if (sess == null) {
-                throw UndertowMessages.MESSAGES.sessionNotFound(sessionId);
+                throw UndertowMessages.MESSAGES.sessionIsInvalid(sessionId);
             }
             return sess.creationTime;
         }
@@ -372,7 +372,7 @@ public class ConvergedInMemorySessionManager implements SessionManager, SessionM
         public long getLastAccessedTime() {
             final ConvergedInMemorySession sess = sessionManager.sessions.get(sessionId);
             if (sess == null) {
-                throw UndertowMessages.MESSAGES.sessionNotFound(sessionId);
+                throw UndertowMessages.MESSAGES.sessionIsInvalid(sessionId);
             }
             return sess.lastAccessed;
         }
@@ -381,7 +381,7 @@ public class ConvergedInMemorySessionManager implements SessionManager, SessionM
         public void setMaxInactiveInterval(final int interval) {
             final ConvergedInMemorySession sess = sessionManager.sessions.get(sessionId);
             if (sess == null) {
-                throw UndertowMessages.MESSAGES.sessionNotFound(sessionId);
+                throw UndertowMessages.MESSAGES.sessionIsInvalid(sessionId);
             }
             sess.maxInactiveInterval = interval;
             bumpTimeout();
@@ -391,7 +391,7 @@ public class ConvergedInMemorySessionManager implements SessionManager, SessionM
         public int getMaxInactiveInterval() {
             final ConvergedInMemorySession sess = sessionManager.sessions.get(sessionId);
             if (sess == null) {
-                throw UndertowMessages.MESSAGES.sessionNotFound(sessionId);
+                throw UndertowMessages.MESSAGES.sessionIsInvalid(sessionId);
             }
             return sess.maxInactiveInterval;
         }
@@ -400,7 +400,7 @@ public class ConvergedInMemorySessionManager implements SessionManager, SessionM
         public Object getAttribute(final String name) {
             final ConvergedInMemorySession sess = sessionManager.sessions.get(sessionId);
             if (sess == null) {
-                throw UndertowMessages.MESSAGES.sessionNotFound(sessionId);
+                throw UndertowMessages.MESSAGES.sessionIsInvalid(sessionId);
             }
             bumpTimeout();
             return sess.attributes.get(name);
@@ -410,7 +410,7 @@ public class ConvergedInMemorySessionManager implements SessionManager, SessionM
         public Set<String> getAttributeNames() {
             final ConvergedInMemorySession sess = sessionManager.sessions.get(sessionId);
             if (sess == null) {
-                throw UndertowMessages.MESSAGES.sessionNotFound(sessionId);
+                throw UndertowMessages.MESSAGES.sessionIsInvalid(sessionId);
             }
             bumpTimeout();
             return sess.attributes.keySet();
@@ -420,7 +420,7 @@ public class ConvergedInMemorySessionManager implements SessionManager, SessionM
         public Object setAttribute(final String name, final Object value) {
             final ConvergedInMemorySession sess = sessionManager.sessions.get(sessionId);
             if (sess == null) {
-                throw UndertowMessages.MESSAGES.sessionNotFound(sessionId);
+                throw UndertowMessages.MESSAGES.sessionIsInvalid(sessionId);
             }
             final Object existing = sess.attributes.put(name, value);
             if (existing == null) {
@@ -436,7 +436,7 @@ public class ConvergedInMemorySessionManager implements SessionManager, SessionM
         public Object removeAttribute(final String name) {
             final ConvergedInMemorySession sess = sessionManager.sessions.get(sessionId);
             if (sess == null) {
-                throw UndertowMessages.MESSAGES.sessionNotFound(sessionId);
+                throw UndertowMessages.MESSAGES.sessionIsInvalid(sessionId);
             }
             final Object existing = sess.attributes.remove(name);
             sessionManager.sessionListeners.attributeRemoved(sess.session, name, existing);

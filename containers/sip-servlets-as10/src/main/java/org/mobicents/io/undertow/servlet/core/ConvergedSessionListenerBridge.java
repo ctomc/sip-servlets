@@ -20,20 +20,21 @@ package org.mobicents.io.undertow.servlet.core;
 
 import java.security.AccessController;
 import java.util.HashSet;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpSession;
+import javax.servlet.http.HttpSessionBindingEvent;
+import javax.servlet.http.HttpSessionBindingListener;
 
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.session.Session;
 import io.undertow.server.session.SessionManager;
-import io.undertow.servlet.api.ThreadSetupAction;
+import io.undertow.servlet.api.Deployment;
+import io.undertow.servlet.api.ThreadSetupHandler;
 import io.undertow.servlet.core.ApplicationListeners;
 import io.undertow.servlet.core.SessionListenerBridge;
 import io.undertow.servlet.handlers.ServletRequestContext;
 import io.undertow.servlet.spec.HttpSessionImpl;
-
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpSession;
-import javax.servlet.http.HttpSessionBindingEvent;
-import javax.servlet.http.HttpSessionBindingListener;
 
 /**
  * This class extends io.undertow.servlet.core.SessionListenerBridge to create ConvergedHttpSessions instead of plain HttpSessions.
@@ -41,18 +42,24 @@ import javax.servlet.http.HttpSessionBindingListener;
  * @author kakonyi.istvan@alerant.hu
  */
 public class ConvergedSessionListenerBridge extends SessionListenerBridge{
-    private final ThreadSetupAction threadSetup;
     private final ApplicationListeners applicationListeners;
     private final ServletContext servletContext;
     private final SessionManager manager;
+    private final ThreadSetupHandler.Action<Void, Session> destroyedAction;
 
-    public ConvergedSessionListenerBridge(final ThreadSetupAction threadSetup, final ApplicationListeners applicationListeners,
-            final ServletContext servletContext, final SessionManager manager) {
-        super(threadSetup, applicationListeners, servletContext);
-        this.threadSetup = threadSetup;
+    public ConvergedSessionListenerBridge(final Deployment deployment, final ApplicationListeners applicationListeners,
+                                          final ServletContext servletContext, final SessionManager manager) {
+        super(deployment, applicationListeners, servletContext);
         this.applicationListeners = applicationListeners;
         this.servletContext = servletContext;
         this.manager = manager;
+        this.destroyedAction = deployment.createThreadSetupAction(new ThreadSetupHandler.Action<Void, Session>() {
+            @Override
+            public Void call(HttpServerExchange exchange, Session session) throws ServletException {
+                doDestroy(session);
+                return null;
+            }
+        });
     }
 
     @Override
@@ -63,36 +70,40 @@ public class ConvergedSessionListenerBridge extends SessionListenerBridge{
 
     @Override
     public void sessionDestroyed(final Session session, final HttpServerExchange exchange, final SessionDestroyedReason reason) {
-        ThreadSetupAction.Handle handle = null;
-        try {
-            final HttpSession httpSession = SecurityActions.forSession(session, servletContext, false, manager);
-            if (reason == SessionDestroyedReason.TIMEOUT) {
-                handle = threadSetup.setup(exchange);
+        if (reason == SessionDestroyedReason.TIMEOUT) {
+            try {
+                //we need to perform thread setup actions
+                destroyedAction.call(exchange, session);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-            applicationListeners.sessionDestroyed(httpSession);
-            //we make a defensive copy here, as there is no guarantee that the underlying session map
-            //is a concurrent map, and as a result a concurrent modification exception may be thrown
-            HashSet<String> names = new HashSet<>(session.getAttributeNames());
-            for(String attribute : names) {
-                session.removeAttribute(attribute);
-            }
-        } finally {
-            if (handle != null) {
-                handle.tearDown();
-            }
-            ServletRequestContext current = SecurityActions.currentServletRequestContext();
-            Session underlying = null;
-            if(current != null && current.getSession() != null) {
-                if(System.getSecurityManager() == null) {
-                    underlying = current.getSession().getSession();
-                } else {
-                    underlying = AccessController.doPrivileged(new HttpSessionImpl.UnwrapSessionAction(current.getSession()));
-                }
-            }
+        } else {
+            doDestroy(session);
+        }
 
-            if (current != null && underlying == session) {
-                current.setSession(null);
+        ServletRequestContext current = SecurityActions.currentServletRequestContext();
+        Session underlying = null;
+        if (current != null && current.getSession() != null) {
+            if (System.getSecurityManager() == null) {
+                underlying = current.getSession().getSession();
+            } else {
+                underlying = AccessController.doPrivileged(new HttpSessionImpl.UnwrapSessionAction(current.getSession()));
             }
+        }
+
+        if (current != null && underlying == session) {
+            current.setSession(null);
+        }
+    }
+
+    private void doDestroy(Session session) {
+        final HttpSession httpSession = SecurityActions.forSession(session, servletContext, false, manager);
+        applicationListeners.sessionDestroyed(httpSession);
+        //we make a defensive copy here, as there is no guarantee that the underlying session map
+        //is a concurrent map, and as a result a concurrent modification exception may be thrown
+        HashSet<String> names = new HashSet<>(session.getAttributeNames());
+        for (String attribute : names) {
+            session.removeAttribute(attribute);
         }
     }
 

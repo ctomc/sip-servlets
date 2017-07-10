@@ -42,6 +42,7 @@ import java.util.Set;
 import javax.servlet.ServletContainerInitializer;
 import javax.servlet.ServletContext;
 
+import io.undertow.servlet.api.ThreadSetupHandler;
 import org.mobicents.io.undertow.servlet.handlers.ConvergedSessionRestoringHandler;
 import org.mobicents.servlet.sip.startup.ConvergedServletContextImpl;
 
@@ -90,11 +91,9 @@ import io.undertow.servlet.api.ServletInfo;
 import io.undertow.servlet.api.ServletSecurityInfo;
 import io.undertow.servlet.api.ServletStackTraces;
 import io.undertow.servlet.api.SessionPersistenceManager;
-import io.undertow.servlet.api.ThreadSetupAction;
 import io.undertow.servlet.api.WebResourceCollection;
 import io.undertow.servlet.api.SecurityInfo.EmptyRoleSemantic;
 import io.undertow.servlet.core.ApplicationListeners;
-import io.undertow.servlet.core.CompositeThreadSetupAction;
 import io.undertow.servlet.core.ContextClassLoaderSetupAction;
 import io.undertow.servlet.core.DeploymentImpl;
 import io.undertow.servlet.core.DeploymentManagerImpl;
@@ -174,6 +173,14 @@ public class ConvergedDeploymentManagerImpl extends DeploymentManagerImpl{
         deployment.setConvergedServletContext((ConvergedServletContextImpl)servletContext);
 
         handleExtensions(deploymentInfo, servletContext);
+
+        final List<ThreadSetupHandler> setup = new ArrayList<>();
+                setup.add(ServletRequestContextThreadSetupAction.INSTANCE);
+                setup.add(new ContextClassLoaderSetupAction(deploymentInfo.getClassLoader()));
+                setup.addAll(deploymentInfo.getThreadSetupActions());
+
+        this.invokeDeploymentMethod(deployment, "setThreadSetupActions", new Class[] {List.class}, new Object[] {setup});
+        
         deployment.getServletPaths().setWelcomePages(deploymentInfo.getWelcomePages());
 
         deployment.setDefaultCharset(Charset.forName(deploymentInfo.getDefaultEncoding()));
@@ -187,15 +194,7 @@ public class ConvergedDeploymentManagerImpl extends DeploymentManagerImpl{
         for(SessionListener listener : deploymentInfo.getSessionListeners()) {
             deployment.getSessionManager().registerSessionListener(listener);
         }
-
-        final List<ThreadSetupAction> setup = new ArrayList<>();
-        setup.add(ServletRequestContextThreadSetupAction.INSTANCE);
-        setup.add(new ContextClassLoaderSetupAction(deploymentInfo.getClassLoader()));
-        setup.addAll(deploymentInfo.getThreadSetupActions());
-        final CompositeThreadSetupAction threadSetupAction = new CompositeThreadSetupAction(setup);
-        deployment.setThreadSetupAction(threadSetupAction);
-
-        ThreadSetupAction.Handle handle = threadSetupAction.setup(null);
+        
         try {
 
             final ApplicationListeners listeners = createListeners();
@@ -217,7 +216,7 @@ public class ConvergedDeploymentManagerImpl extends DeploymentManagerImpl{
                 }
             }
 
-            deployment.getSessionManager().registerSessionListener(new ConvergedSessionListenerBridge(threadSetupAction, listeners, servletContext, deployment.getSessionManager()));
+            deployment.getSessionManager().registerSessionListener(new ConvergedSessionListenerBridge(deployment, listeners, servletContext, deployment.getSessionManager()));
 
             initializeErrorPages(deployment, deploymentInfo);
             initializeMimeMappings(deployment, deploymentInfo);
@@ -239,7 +238,7 @@ public class ConvergedDeploymentManagerImpl extends DeploymentManagerImpl{
                 wrappedHandlers = new MetricsChainHandler(wrappedHandlers, metrics, deployment);
             }
 
-            final ServletInitialHandler servletInitialHandler = SecurityActions.createServletInitialHandler(deployment.getServletPaths(), wrappedHandlers, deployment.getThreadSetupAction(), servletContext);
+            final ServletInitialHandler servletInitialHandler = SecurityActions.createServletInitialHandler(deployment.getServletPaths(), wrappedHandlers, deployment, servletContext);
 
             HttpHandler initialHandler = wrapHandlers(servletInitialHandler, deployment.getDeploymentInfo().getInitialHandlerChainWrappers());
             initialHandler = new HttpContinueReadHandler(initialHandler);
@@ -256,7 +255,7 @@ public class ConvergedDeploymentManagerImpl extends DeploymentManagerImpl{
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            handle.tearDown();
+                        
         }
 
         //set state using reflection:
