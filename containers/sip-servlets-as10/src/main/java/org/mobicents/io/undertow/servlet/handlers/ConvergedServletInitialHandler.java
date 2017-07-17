@@ -23,8 +23,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.security.AccessController;
-import java.security.PrivilegedExceptionAction;
 import java.util.concurrent.Executor;
 import javax.servlet.DispatcherType;
 import javax.servlet.ServletException;
@@ -75,28 +73,29 @@ import org.xnio.conduits.StreamSinkConduit;
  *
  * @author kakonyi.istvan@alerant.hu
  * @author balogh.gabor@alerant.hu
+ * @author Tomaz Cerar
  * */
 public class ConvergedServletInitialHandler extends ServletInitialHandler{
     private static final String HTTP2_UPGRADE_PREFIX = "h2";
 
     private final ConvergedServletContextImpl convergedServletContext;
-    private final Method dispatchRequest;
+    private final Method dispatchRequestMethod;
     private final Field pathsField;
-    private final Method dispatchRequestWithExchange;
+    private final Field dispatchHandlerField;
 
     public ConvergedServletInitialHandler(final ServletPathMatches paths, final HttpHandler next, final Deployment deployment,
                                           final ConvergedServletContextImpl servletContext) {
         super(paths, next, deployment, servletContext.getDelegatedContext());
         this.convergedServletContext = servletContext;
         try {
-            this.dispatchRequest = super.getClass().getDeclaredMethod("dispatchRequest", ServletRequestContext.class, ServletChain.class, DispatcherType.class);
-            this.dispatchRequest.setAccessible(true);
+            //dispatchRequest(final HttpServerExchange exchange, final ServletRequestContext servletRequestContext, final ServletChain servletChain, final DispatcherType dispatcherType)
+            this.dispatchRequestMethod = ServletInitialHandler.class.getDeclaredMethod("dispatchRequest", HttpServerExchange.class, ServletRequestContext.class, ServletChain.class, DispatcherType.class);
+            this.dispatchRequestMethod.setAccessible(true);
+            this.dispatchHandlerField = ServletInitialHandler.class.getDeclaredField("dispatchHandler");
+            this.dispatchHandlerField.setAccessible(true);
             this.pathsField = ServletInitialHandler.class.getDeclaredField("paths");
             this.pathsField.setAccessible(true);
 
-            //dispatchRequest(final HttpServerExchange exchange, final ServletRequestContext servletRequestContext, final ServletChain servletChain, final DispatcherType dispatcherType) throws Exception {
-            this.dispatchRequestWithExchange = super.getClass().getDeclaredMethod("dispatchRequest", HttpServerExchange.class, ServletRequestContext.class, ServletChain.class, DispatcherType.class);
-            this.dispatchRequestWithExchange.setAccessible(true);
 
         } catch (NoSuchMethodException|NoSuchFieldException e) {
             throw new RuntimeException(e);
@@ -162,25 +161,9 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
 
         if (exchange.isInIoThread() || executor != null) {
             //either the exchange has not been dispatched yet, or we need to use a special executor
-            exchange.dispatch(executor, new HttpHandler() {
-                @Override
-                public void handleRequest(final HttpServerExchange exchange) throws Exception {
-                    if(System.getSecurityManager() == null) {
-                        dispatchRequestWithExchange.invoke(this, exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
-                    } else {
-                        //sometimes thread pools inherit some random
-                        AccessController.doPrivileged(new PrivilegedExceptionAction<Object>() {
-                            @Override
-                            public Object run() throws Exception{
-                                dispatchRequestWithExchange.invoke(this, exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
-                                return null;
-                            }
-                        });
-                    }
-                }
-            });
+            exchange.dispatch(executor, (HttpHandler) dispatchHandlerField.get(this));
         } else {
-            dispatchRequestWithExchange.invoke(this, exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
+            dispatchRequest(exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
         }
     }
 
@@ -227,13 +210,17 @@ public class ConvergedServletInitialHandler extends ServletInitialHandler{
         servletRequestContext.setServletPathMatch(info);
 
         try {
-            dispatchRequest.invoke(this, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
+            dispatchRequest(exchange, servletRequestContext, info.getServletChain(), DispatcherType.REQUEST);
         } catch (Exception e) {
             if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;
             }
             throw new ServletException(e);
         }
+    }
+
+    private void dispatchRequest(final HttpServerExchange exchange, final ServletRequestContext servletRequestContext, final ServletChain servletChain, final DispatcherType dispatcherType) throws Exception {
+        dispatchRequestMethod.invoke(exchange, servletRequestContext, servletChain, dispatcherType);
     }
 
     //FIXME:kakonyii: This method is copied form the base class:

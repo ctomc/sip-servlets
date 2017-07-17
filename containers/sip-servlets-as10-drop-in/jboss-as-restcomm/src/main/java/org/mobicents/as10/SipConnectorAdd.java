@@ -29,19 +29,14 @@ import static org.mobicents.as10.Constants.STUN_SERVER_ADDRESS;
 import static org.mobicents.as10.Constants.STUN_SERVER_PORT;
 import static org.mobicents.as10.SipConnectorDefinition.CONNECTOR_ATTRIBUTES;
 
-import java.util.List;
-
 import org.jboss.as.controller.AbstractAddStepHandler;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathAddress;
-import org.jboss.as.controller.ServiceVerificationHandler;
-import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.registry.Resource;
 import org.jboss.as.network.SocketBinding;
 import org.jboss.dmr.ModelNode;
 import org.jboss.msc.service.ServiceBuilder;
-import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceController.Mode;
 
 /**
@@ -55,28 +50,18 @@ import org.jboss.msc.service.ServiceController.Mode;
  */
 class SipConnectorAdd extends AbstractAddStepHandler {
 
-    static final SipConnectorAdd INSTANCE = new SipConnectorAdd();
 
     private SipConnectorAdd() {
-        //
+        super(CONNECTOR_ATTRIBUTES);
     }
 
-    @Override
-    protected void populateModel(final ModelNode operation, final ModelNode model) throws OperationFailedException {
-        PathAddress address = PathAddress.pathAddress(operation.require(OP_ADDR));
-        model.get(SipConnectorDefinition.NAME.getName()).set(address.getLastElement().getValue());
+    static final SipConnectorAdd INSTANCE = new SipConnectorAdd();
 
-        for (SimpleAttributeDefinition def : CONNECTOR_ATTRIBUTES) {
-            def.validateAndSet(operation, model);
-        }
-    }
 
     @Override
-    protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model,
-            ServiceVerificationHandler verificationHandler, List<ServiceController<?>> newControllers)
+    protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model)
             throws OperationFailedException {
-        final PathAddress address = PathAddress.pathAddress(operation.get(OP_ADDR));
-        final String name = address.getLastElement().getValue();
+        final String name = context.getCurrentAddressValue();
 
         ModelNode fullModel = Resource.Tools.readModel(context.readResource(PathAddress.EMPTY_ADDRESS));
         final String bindingRef = SipConnectorDefinition.SOCKET_BINDING.resolveModelAttribute(context, fullModel).asString();
@@ -108,13 +93,7 @@ class SipConnectorAdd extends AbstractAddStepHandler {
                 .addDependency(SocketBinding.JBOSS_BINDING_NAME.append(bindingRef), SocketBinding.class, service.getBinding());
         //kakonyii: set initialMode to PASSIVE to prevent the connector to receive messages. Connector will be enabled later by UndertowSipConnectorActivate service after all sip deployments finished:
         serviceBuilder.setInitialMode(enabled ? Mode.PASSIVE : Mode.NEVER);
+        serviceBuilder.install();
 
-        if (enabled) {
-            serviceBuilder.addListener(verificationHandler);
-        }
-        final ServiceController<SipConnectorListener> serviceController = serviceBuilder.install();
-        if (newControllers != null) {
-            newControllers.add(serviceController);
-        }
     }
 }

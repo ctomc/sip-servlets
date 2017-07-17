@@ -39,8 +39,8 @@
     <description>&gt;JBoss Application Server: Restcomm Sip Servlets Adaptation Layer</description>
 
     <properties>
-        <junit.version>4.1</junit.version>
-	    <version.wildfly>10.1.0.Final</version.wildfly>
+        <junit.version>4.12</junit.version>
+        <version.wildfly>10.1.0.Final</version.wildfly>
         <version.io.undertow.undertow-servlet>1.4.13.Final</version.io.undertow.undertow-servlet>
         <version.io.undertow.undertow-core>${version.io.undertow.undertow-servlet}</version.io.undertow.undertow-core>
         <version.jboss-vfs>3.2.12.Final</version.jboss-vfs>
@@ -77,55 +77,55 @@
     </pluginRepositories>
 
     <dependencies>
-	<dependency>
-	    <groupId>javax</groupId>
-	    <artifactId>javaee-web-api</artifactId>
-	    <version>7.0</version>
-	    <scope>provided</scope>
-	</dependency>
-	<dependency>
-		<groupId>org.wildfly</groupId>
-		<artifactId>wildfly-undertow</artifactId>
-		<version>${version.wildfly}</version>
-		<scope>provided</scope>
-	</dependency>
-	<dependency>
-	        <groupId>org.wildfly</groupId>
-    		<artifactId>wildfly-naming</artifactId>
-    		<version>${version.wildfly}</version>
- 		<scope>provided</scope>
-	</dependency>				
-	<dependency>
-		<groupId>org.wildfly</groupId>
-		<artifactId>wildfly-web</artifactId>
-		<version>${version.wildfly}</version>
-		<scope>provided</scope>
-	</dependency>		
-	<dependency>
-		<groupId>org.wildfly</groupId>
-		<artifactId>wildfly-web-common</artifactId>
-		<version>${version.wildfly}</version>
-		<scope>provided</scope>
-	</dependency>		
-	<dependency>
-		<groupId>io.undertow</groupId>
-		<artifactId>undertow-core</artifactId>
-		<version>${version.io.undertow.undertow-core}</version>
-	</dependency>
-	<dependency>
-		<groupId>io.undertow</groupId>
-		<artifactId>undertow-servlet</artifactId>
-		<version>${version.io.undertow.undertow-servlet}</version>
-	</dependency>	
-
-	<dependency>
-           <groupId>org.jboss</groupId>
-           <artifactId>jboss-vfs</artifactId>
-           <version>${version.jboss-vfs}</version>
-	   <scope>provided</scope>
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-web-api</artifactId>
+            <version>7.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-undertow</artifactId>
+            <version>${version.wildfly}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-naming</artifactId>
+            <version>${version.wildfly}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-web</artifactId>
+            <version>${version.wildfly}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-web-common</artifactId>
+            <version>${version.wildfly}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.undertow</groupId>
+            <artifactId>undertow-core</artifactId>
+            <version>${version.io.undertow.undertow-core}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.undertow</groupId>
+            <artifactId>undertow-servlet</artifactId>
+            <version>${version.io.undertow.undertow-servlet}</version>
         </dependency>
 
-	<!-- jain-sip dependency -->
+        <dependency>
+            <groupId>org.jboss</groupId>
+            <artifactId>jboss-vfs</artifactId>
+            <version>${version.jboss-vfs}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- jain-sip dependency -->
         <dependency>
             <groupId>javax.sip</groupId>
             <artifactId>jain-sip-api</artifactId>
@@ -138,7 +138,7 @@
             <version>${jain-sip-ri.version}</version>
             <scope>provided</scope>
         </dependency>
-        
+
         <!-- sip servlets dependency -->
         <dependency>
             <groupId>org.mobicents.servlet.sip</groupId>
@@ -183,7 +183,7 @@
         </dependency>
 
         <!-- mobicents sip stack extensions deps -->
-        <dependency>            
+        <dependency>
             <groupId>org.mobicents.javax.sip</groupId>
             <artifactId>restcomm-jain-sip-ext</artifactId>
             <version>${restcomm.jain.sip.ext.version}</version>
@@ -192,14 +192,14 @@
         <dependency>
             <groupId>dnsjava</groupId>
             <artifactId>dnsjava</artifactId>
-		<version>2.1.7</version>
+            <version>2.1.7</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-                <groupId>net.java.stun4j</groupId>
-                <artifactId>stun4j</artifactId>
-                <version>1.0.MOBICENTS</version>
-                <scope>provided</scope>
+            <groupId>net.java.stun4j</groupId>
+            <artifactId>stun4j</artifactId>
+            <version>1.0.MOBICENTS</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.mobicents.ha.javax.sip</groupId>
@@ -213,7 +213,7 @@
             <version>${project.version}</version>
         </dependency>
 
-	<!-- provided dependencies -->
+        <!-- provided dependencies -->
         <dependency>
             <groupId>javax.activation</groupId>
             <artifactId>activation</artifactId>
@@ -232,24 +232,41 @@
             <scope>provided</scope>
         </dependency>
 
-	<!-- -->        
+        <!-- jboss message bundle annotiations -->
         <dependency>
-            <groupId>org.jboss.solder</groupId>
-            <artifactId>solder-tooling</artifactId>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging-annotations</artifactId>
+            <version>2.0.1.Final</version>
+            <!-- Only required during compile of the current module -->
             <scope>provided</scope>
             <optional>true</optional>
-            <version>3.2.1.Final</version>
-	</dependency>
-
-	<!-- jboss message bundle annotiations -->
-	<dependency>  
-            <groupId>org.jboss.logging</groupId>  
-            <artifactId>jboss-logging-annotations</artifactId>  
-            <version>2.0.1.Final</version>
-            <!-- Only required during compile of the current module -->  
-            <scope>provided</scope>  
-            <optional>true</optional>  
         </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-subsystem-test</artifactId>
+            <version>2.2.0.Final</version>
+            <type>pom</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.xnio</groupId>
+            <artifactId>xnio-nio</artifactId>
+            <version>3.3.6.Final</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.xnio</groupId>
+            <artifactId>xnio-api</artifactId>
+            <version>3.3.6.Final</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <profiles>

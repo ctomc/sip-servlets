@@ -40,13 +40,6 @@ import org.jboss.dmr.ModelType;
  * @author kakonyi.istvan@alerant.hu
  */
 public class SipConnectorDefinition extends SimpleResourceDefinition {
-    public static final SipConnectorDefinition INSTANCE = new SipConnectorDefinition();
-
-    protected static final SimpleAttributeDefinition NAME =
-            new SimpleAttributeDefinitionBuilder(Constants.NAME, ModelType.STRING)
-                    .setXmlName(Constants.NAME)
-                    .setAllowNull(true) // todo should be false, but 'add' won't validate then
-                    .build();
 
     protected static final SimpleAttributeDefinition PROTOCOL =
             new SimpleAttributeDefinitionBuilder(Constants.PROTOCOL, ModelType.STRING)
@@ -196,6 +189,8 @@ public class SipConnectorDefinition extends SimpleResourceDefinition {
         HOSTNAMES
     };
 
+    public static final SipConnectorDefinition INSTANCE = new SipConnectorDefinition();
+
     private SipConnectorDefinition() {
         super(SipExtension.CONNECTOR_PATH, SipExtension.getResourceDescriptionResolver(Constants.CONNECTOR),
                 SipConnectorAdd.INSTANCE, SipConnectorRemove.INSTANCE);
@@ -203,7 +198,6 @@ public class SipConnectorDefinition extends SimpleResourceDefinition {
 
     @Override
     public void registerAttributes(ManagementResourceRegistration connectors) {
-        connectors.registerReadOnlyAttribute(NAME, null);
         for (SimpleAttributeDefinition def : CONNECTOR_ATTRIBUTES) {
             connectors.registerReadWriteAttribute(def, null, new ReloadRequiredWriteAttributeHandler(def));
         }

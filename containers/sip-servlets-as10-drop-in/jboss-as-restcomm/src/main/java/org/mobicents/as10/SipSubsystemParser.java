@@ -84,7 +84,7 @@ class SipSubsystemParser implements XMLStreamConstants, XMLElementReader<List<Mo
         SipDefinition.CONCURRENCY_CONTROL_MODE.marshallAsAttribute(node, false, writer);
         SipDefinition.PROXY_TIMER_SERVICE_IMPEMENTATION_TYPE.marshallAsAttribute(node, false, writer);
         SipDefinition.SAS_TIMER_SERVICE_IMPEMENTATION_TYPE.marshallAsAttribute(node, false, writer);
-        SipDefinition.CONGESTION_CONTROL_INTERVAL.marshallAsAttribute(node, false, writer);
+        SipDefinition.CONGESTION_CONTROL_INTERVAL.marshallAsAttribute(node, true, writer);
         SipDefinition.CONGESTION_CONTROL_POLICY.marshallAsAttribute(node, false, writer);
         SipDefinition.USE_PRETTY_ENCODING.marshallAsAttribute(node, false, writer);
         SipDefinition.ADDITIONAL_PARAMETERABLE_HEADERS.marshallAsAttribute(node, false, writer);
